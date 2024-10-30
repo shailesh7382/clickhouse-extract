@@ -52,3 +52,10 @@ ln -s /etc/clickhouse-server/users.xml users.xml
 
 rename clickhouse data directory 
 
+
+Port Availability: Verify that port 9100 is not being used by another process. You can use the following command to check if the port is in use:
+lsof -i :9100
+
+
+Check Listening Ports: Verify that ClickHouse is listening on port 9100. You can use the following command to check:
+netstat -an | grep 9100
