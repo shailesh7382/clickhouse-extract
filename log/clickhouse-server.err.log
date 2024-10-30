@@ -1,0 +1,4 @@
+Processing configuration file '/Users/shailesh/IdeaProjects/clickhouse-extract/system-config/system-config.xml'.
+Logging trace to /Users/shailesh/IdeaProjects/clickhouse-extract/log/clickhouse-server.log
+Logging errors to /Users/shailesh/IdeaProjects/clickhouse-extract/log/clickhouse-server.err.log
+2024.10.30 23:25:36.326339 [ 87971 ] {} <Warning> Context: Maximum number of threads is lower than 30000. There could be problems with handling a lot of simultaneous queries.

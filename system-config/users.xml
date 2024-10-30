@@ -1,0 +1,56 @@
+<clickhouse>
+    <!-- Define users -->
+    <users>
+        <!-- Default user -->
+        <default>
+            <password>password123</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+        </default>
+
+        <!-- Custom user -->
+        <new_user>
+            <password>password123</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+        </new_user>
+        <shailesh>
+            <password>password123</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+        </shailesh>
+    </users>
+
+    <!-- Define profiles -->
+    <profiles>
+        <default>
+            <max_memory_usage>10000000000</max_memory_usage>
+            <use_uncompressed_cache>0</use_uncompressed_cache>
+            <load_balancing>random</load_balancing>
+            <max_threads>8</max_threads>
+        </default>
+    </profiles>
+
+    <!-- Define quotas -->
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+    </quotas>
+</clickhouse>
