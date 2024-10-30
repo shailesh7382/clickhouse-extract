@@ -44,7 +44,7 @@ public class SimpleReader {
         try (QueryResponse response = client.query(sql).get(3, TimeUnit.SECONDS);) {
 
             // Create sample_hacker_news_posts.json reader to access the data in sample_hacker_news_posts.json convenient way
-            ClickHouseBinaryFormatReader reader = null /*client.newBinaryFormatReader(response)*/;
+            ClickHouseBinaryFormatReader reader = client.newBinaryFormatReader(response);
 
             while (reader.hasNext()) {
                 reader.next(); // Read the next record from stream and parse it
@@ -85,7 +85,7 @@ public class SimpleReader {
     public void readData() {
         log.info("Reading data from table: " + TABLE_NAME + " using Records iterator");
         final String sql = "select * from " + TABLE_NAME + " where title <> '' limit 10";
-       /* try (Records records = client.queryRecords(sql).get(3, TimeUnit.SECONDS);) {
+       try (Records records = client.queryRecords(sql).get(3, TimeUnit.SECONDS);) {
 
             // Get some metrics
             log.info("Data read successfully: " + TimeUnit.NANOSECONDS.toMillis(records.getServerTime()) + " ms");
@@ -101,6 +101,6 @@ public class SimpleReader {
             }
         } catch (Exception e) {
             log.log(Level.SEVERE, "Failed to read data", e);
-        }*/
+        }
     }
 }
