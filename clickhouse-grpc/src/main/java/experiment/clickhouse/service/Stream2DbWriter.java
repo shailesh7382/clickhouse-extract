@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 public class Stream2DbWriter {
 
     private static final Logger log = LoggerFactory.getLogger(Stream2DbWriter.class);
-    private static final String TABLE_NAME = "hacker_news_articles";
+    private static final String TABLE_NAME = "news_articles";
 
     private final Client client;
     private final String database;

@@ -13,11 +13,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class POJO2DbWriter {
+public class ObjectDbWriter {
 
-    private static final Logger log = Logger.getLogger(POJO2DbWriter.class.getName());
+    private static final Logger log = Logger.getLogger(ObjectDbWriter.class.getName());
 
-    private static final String TABLE_NAME = "article_view_events";
+    private static final String TABLE_NAME = "view_events";
 
     private static final int EVENTS_BATCH_SIZE = 10;
 
@@ -29,7 +29,7 @@ public class POJO2DbWriter {
 
     private AtomicBoolean classRegistered = new AtomicBoolean(false);
 
-    public POJO2DbWriter(String endpoint, String user, String password, String database) {
+    public ObjectDbWriter(String endpoint, String user, String password, String database) {
         // Create sample_hacker_news_posts.json lightweight object to interact with ClickHouse server
         Client.Builder clientBuilder = new Client.Builder()
                 .addEndpoint(endpoint)
@@ -48,7 +48,7 @@ public class POJO2DbWriter {
     }
 
     public void resetTable() {
-        try (InputStream initSql = POJO2DbWriter.class.getResourceAsStream("/article_view_event_init.sql")) {
+        try (InputStream initSql = ObjectDbWriter.class.getResourceAsStream("/article_view_event_init.sql")) {
             // Sending sample_hacker_news_posts.json simple query - no settings required
             client.query("drop table if exists " + TABLE_NAME).get(3, TimeUnit.SECONDS);
 

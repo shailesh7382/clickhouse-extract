@@ -4,24 +4,35 @@ import com.clickhouse.client.api.Client;
 import com.clickhouse.client.api.data_formats.ClickHouseBinaryFormatReader;
 import com.clickhouse.client.api.metrics.ClientMetrics;
 import com.clickhouse.client.api.query.QueryResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+/**
+ * Example class demonstrating how to read a large dataset from ClickHouse.
+ */
 public class BigDatasetExamples {
 
-    private static final Logger log = Logger.getLogger(BigDatasetExamples.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(BigDatasetExamples.class);
 
     private final String endpoint;
     private final String user;
     private final String password;
     private final String database;
 
+    /**
+     * Constructor to initialize the ClickHouse client parameters.
+     *
+     * @param endpoint ClickHouse server endpoint
+     * @param user     Username for ClickHouse
+     * @param password Password for ClickHouse
+     * @param database Database name
+     */
     public BigDatasetExamples(String endpoint, String user, String password, String database) {
         this.endpoint = endpoint;
         this.user = user;
@@ -30,8 +41,11 @@ public class BigDatasetExamples {
     }
 
     /**
-     * Reads {@code system.numbers} table into sample_hacker_news_posts.json result set of numbers of different types.
+     * Reads a large set of numbers from the ClickHouse database.
      *
+     * @param limit       Number of records to read
+     * @param iterations  Number of iterations to perform
+     * @param concurrency Number of concurrent threads
      */
     void readBigSetOfNumbers(int limit, int iterations, int concurrency) {
         Client client = new Client.Builder()
@@ -41,10 +55,15 @@ public class BigDatasetExamples {
                 .setDefaultDatabase(database)
                 .compressServerResponse(false)
                 .compressClientRequest(false)
-                // when network buffer and socket buffer are the same size - it is less IO calls and more efficient
+                .setLZ4UncompressedBufferSize(1048576)
+                .useNewImplementation(true)
                 .setSocketRcvbuf(1_000_000)
+                .setClientNetworkBufferSize(1_000_000)
+                .setMaxConnections(20)
                 .build();
+
         try {
+            log.info("Pinging ClickHouse server to warm up connections pool");
             client.ping(10); // warmup connections pool. required once per client.
 
             Runnable task = () -> {
@@ -58,20 +77,20 @@ public class BigDatasetExamples {
                         }
                         sb.append("\n");
                     } catch (Exception e) {
-                        log.log(Level.SEVERE, "Failed to read dataset", e);
+                        log.error("Failed to read dataset", e);
                     }
                 }
 
-                System.out.print(sb.toString());
+                log.info("Read results: \n{}", sb.toString());
             };
 
-            System.out.println("Records, Read Time, Request Time, Server Time");
+            log.info("Starting dataset read with concurrency: {}", concurrency);
             if (concurrency == 1) {
                 task.run();
             } else {
                 ExecutorService executor = new ThreadPoolExecutor(concurrency, Integer.MAX_VALUE,
                         60L, TimeUnit.SECONDS,
-                        new SynchronousQueue<Runnable>());
+                        new SynchronousQueue<>());
 
                 for (int i = 0; i < concurrency; i++) {
                     executor.submit(task);
@@ -81,26 +100,26 @@ public class BigDatasetExamples {
                 executor.awaitTermination(3, TimeUnit.MINUTES);
             }
         } catch (InterruptedException e) {
+            log.error("Execution interrupted", e);
             throw new RuntimeException(e);
         } finally {
-//            client.close();
+            client.close();
         }
     }
 
     /**
-     * Does actual request and returns time stats in format:
-     *  [number of records, read time in ms, request initiation time in ms, server time in ms]
-     * @param client
-     * @param limit
-     * @return
+     * Executes the query to read a set of numbers and returns time statistics.
+     *
+     * @param client ClickHouse client
+     * @param limit  Number of records to read
+     * @return Array of time statistics [number of records, read time in ms, request initiation time in ms, server time in ms]
      */
     private long[] doReadNumbersSet(Client client, int limit) {
         final String query = DATASET_QUERY + " LIMIT " + limit;
         try (QueryResponse response = client.query(query).get(3000, TimeUnit.MILLISECONDS)) {
             ArrayList<NumbersRecord> result = new ArrayList<>();
 
-            // iterable approach is more efficient for large datasets because it doesn't load all records into memory
-            ClickHouseBinaryFormatReader reader = null/*client.newBinaryFormatReader(response)*/;
+            ClickHouseBinaryFormatReader reader = client.newBinaryFormatReader(response);
 
             long start = System.nanoTime();
             while (reader.next() != null) {
@@ -114,9 +133,10 @@ public class BigDatasetExamples {
             }
             long duration = System.nanoTime() - start;
 
-            return new long[] { result.size(), TimeUnit.NANOSECONDS.toMillis(duration), response.getMetrics().getMetric(ClientMetrics.OP_DURATION).getLong(),
-                    TimeUnit.NANOSECONDS.toMillis(response.getServerTime()) };
+            return new long[]{result.size(), TimeUnit.NANOSECONDS.toMillis(duration), response.getMetrics().getMetric(ClientMetrics.OP_DURATION).getLong(),
+                    TimeUnit.NANOSECONDS.toMillis(response.getServerTime())};
         } catch (Exception e) {
+            log.error("Failed to fetch dataset", e);
             throw new RuntimeException("Failed to fetch dataset", e);
         }
     }
@@ -132,24 +152,13 @@ public class BigDatasetExamples {
     public static void main(String[] args) {
         final String endpoint = System.getProperty("chEndpoint", "http://localhost:8123");
         final String user = System.getProperty("chUser", "default");
-        final String password = System.getProperty("chPassword", "");
+        final String password = System.getProperty("chPassword", "password123");
         final String database = System.getProperty("chDatabase", "default");
-
-//        profilerDelay();
 
         BigDatasetExamples examples = new BigDatasetExamples(endpoint, user, password, database);
 
+        log.info("Starting to read big set of numbers");
         examples.readBigSetOfNumbers(100_000, 100, 10);
-
-//        profilerDelay();
-    }
-
-    private static void profilerDelay() {
-        // Delay for sample_hacker_news_posts.json profiler
-        try {
-            Thread.sleep(30000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        log.info("Completed reading big set of numbers");
     }
 }

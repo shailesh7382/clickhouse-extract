@@ -28,7 +28,7 @@ public class TextFormatsReader {
 
     private static final Logger log = Logger.getLogger(TextFormatsReader.class.getName());
 
-    private static final String TABLE_NAME = "hacker_news_articles";
+    private static final String TABLE_NAME = "news_articles";
 
     Client client;
 

@@ -16,7 +16,7 @@ public class SimpleReader {
 
     private static final Logger log = Logger.getLogger(SimpleReader.class.getName());
 
-    private static final String TABLE_NAME = "hacker_news_articles";
+    private static final String TABLE_NAME = "news_articles";
 
     Client client;
 

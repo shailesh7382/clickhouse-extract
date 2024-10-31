@@ -107,7 +107,7 @@ public class ClickhouseAccess {
 
     private void insertDataUsingPOJO() {
         log.info("Inserting data using POJO");
-        POJO2DbWriter pojoWriter = new POJO2DbWriter(endpoint, user, password, database);
+        ObjectDbWriter pojoWriter = new ObjectDbWriter(endpoint, user, password, database);
         pojoWriter.resetTable();
         for (int i = 0; i < 10; i++) {
             pojoWriter.submit(new ArticleViewEvent(11132929d, LocalDateTime.now(), UUID.randomUUID().toString()));

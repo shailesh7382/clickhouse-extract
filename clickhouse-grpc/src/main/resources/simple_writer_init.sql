@@ -1,4 +1,4 @@
-create table hacker_news_articles (
+create table news_articles (
 id Nullable(Float64),
 deleted Nullable(Float64),
 type Nullable(String),
