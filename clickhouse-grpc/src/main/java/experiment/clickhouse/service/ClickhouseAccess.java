@@ -1,5 +1,6 @@
 package experiment.clickhouse.service;
 
+import experiment.clickhouse.service.fix.LpPriceEvent;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -40,12 +41,6 @@ public class ClickhouseAccess {
             Runtime.getRuntime().exit(-503);
         }
 
-        // Reset the table
-        resetTable();
-
-        // Insert data from JSON file
-        insertDataFromJson();
-
         // Read data in various formats
         readData();
         readDataAsText();
@@ -67,23 +62,6 @@ public class ClickhouseAccess {
             log.warning("ClickHouse server is not alive");
         }
         return isAlive;
-    }
-
-    private void resetTable() {
-        log.info("Resetting the table in ClickHouse");
-        Stream2DbWriter writer = new Stream2DbWriter(endpoint, user, password, database);
-        writer.resetTable();
-    }
-
-    private void insertDataFromJson() {
-        log.info("Inserting data from resources/sample_hacker_news_posts.json");
-        try (InputStream is = ClickhouseAccess.class.getResourceAsStream("/sample_hacker_news_posts.json")) {
-            Stream2DbWriter writer = new Stream2DbWriter(endpoint, user, password, database);
-            writer.insertData_JSONEachRowFormat(is);
-            log.info("Data inserted successfully from JSON file");
-        } catch (Exception e) {
-            log.log(Level.SEVERE, "Failed to insert data from JSON file", e);
-        }
     }
 
     private void readData() {
@@ -114,5 +92,10 @@ public class ClickhouseAccess {
         }
         pojoWriter.printLastEvents();
         log.info("Data inserted successfully using POJO");
+    }
+
+    public void insertLpPriceEvent(LpPriceEvent event) {
+        Stream2DbWriter writer = new Stream2DbWriter(endpoint, user, password, database);
+        writer.insertLpPriceEvent(event);
     }
 }

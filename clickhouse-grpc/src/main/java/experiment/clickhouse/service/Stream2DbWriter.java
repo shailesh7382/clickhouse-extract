@@ -1,40 +1,29 @@
 package experiment.clickhouse.service;
 
 import com.clickhouse.client.api.Client;
-import com.clickhouse.client.api.insert.InsertResponse;
-import com.clickhouse.client.api.insert.InsertSettings;
 import com.clickhouse.client.api.metrics.ServerMetrics;
-import com.clickhouse.data.ClickHouseFormat;
+import com.clickhouse.client.api.query.QueryResponse;
+import experiment.clickhouse.service.fix.LpPriceEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-/**
- * Example class showing how to pass raw data stream to the new ClickHouse client.
- * Input data is passed as InputStream to the {@link com.clickhouse.client.api.Client#insert(String, InputStream, ClickHouseFormat, InsertSettings)}
- * and the format is specified there too.
- */
 public class Stream2DbWriter {
 
     private static final Logger log = LoggerFactory.getLogger(Stream2DbWriter.class);
-    private static final String TABLE_NAME = "news_articles";
+    private static final int BATCH_SIZE = 100; // Define the batch size
 
     private final Client client;
-    private final String database;
+    private final List<LpPriceEvent> eventBatch;
 
-    /**
-     * Constructor to initialize the ClickHouse client.
-     *
-     * @param endpoint ClickHouse server endpoint
-     * @param user     Username for ClickHouse
-     * @param password Password for ClickHouse
-     * @param database Database name
-     */
     public Stream2DbWriter(String endpoint, String user, String password, String database) {
         this.client = new Client.Builder()
                 .addEndpoint(endpoint)
@@ -43,52 +32,101 @@ public class Stream2DbWriter {
                 .compressServerResponse(true)
                 .setDefaultDatabase(database)
                 .build();
-        this.database = database;
+        this.eventBatch = new ArrayList<>();
     }
 
-    /**
-     * Checks if the ClickHouse server is alive.
-     *
-     * @return true if the server is alive, false otherwise
-     */
     public boolean isServerAlive() {
         log.info("Pinging ClickHouse server to check if it is alive");
         return client.ping();
     }
 
-    /**
-     * Resets the table in the ClickHouse database.
-     */
-    public void resetTable() {
-        log.info("Resetting the table: {}", TABLE_NAME);
-        try (InputStream initSql = Stream2DbWriter.class.getResourceAsStream("/simple_writer_init.sql")) {
-            // Drop the table if it exists
-            client.query("DROP TABLE IF EXISTS " + TABLE_NAME).get(3, TimeUnit.SECONDS);
-
-            // Read and execute the SQL file to create the table
-            BufferedReader reader = new BufferedReader(new InputStreamReader(initSql));
-            String sql = reader.lines().collect(Collectors.joining("\n"));
-            log.info("Executing Create Table SQL: {}", sql);
-            client.query(sql).get(3, TimeUnit.SECONDS);
-            log.info("Table initialized successfully");
-        } catch (Exception e) {
-            log.error("Failed to initialize table", e);
+    public synchronized void insertLpPriceEvent(LpPriceEvent event) {
+        eventBatch.add(event);
+        if (eventBatch.size() >= BATCH_SIZE) {
+            flush();
         }
     }
 
-    /**
-     * Inserts data from an InputStream in JSONEachRow format into the ClickHouse table.
-     *
-     * @param inputStream InputStream of JSONEachRow formatted data
-     */
-    public void insertData_JSONEachRowFormat(InputStream inputStream) {
-        log.info("Inserting data into table: {} using JSONEachRow format", TABLE_NAME);
-        InsertSettings insertSettings = new InsertSettings();
-        try (InsertResponse response = client.insert(TABLE_NAME, inputStream, ClickHouseFormat.JSONEachRow, insertSettings).get(3, TimeUnit.SECONDS)) {
-            log.info("Insert finished: {} rows written", response.getMetrics().getMetric(ServerMetrics.NUM_ROWS_WRITTEN).getLong());
-        } catch (Exception e) {
-            log.error("Failed to write JSONEachRow data", e);
+    private synchronized void flush() {
+        createTableIfNotExists();
+        if (eventBatch.isEmpty()) {
+            return;
+        }
+
+        StringBuilder sqlBuilder = new StringBuilder("INSERT INTO lp_price_events (timestamp, uuid, bidPrices, askPrices, quantities, ccyPair, tenor, localDate, lpName) VALUES ");
+        for (LpPriceEvent event : eventBatch) {
+            long epochMillis = event.getTimestamp().toInstant(ZoneOffset.UTC).toEpochMilli();
+            sqlBuilder.append(String.format(
+                    "('%s', '%s', [%s], [%s], [%s], '%s', '%s', '%s', '%s'),",
+                    epochMillis,
+                    event.getUuid(),
+                    arrayToString(event.getBidPrices()),
+                    arrayToString(event.getAskPrices()),
+                    arrayToString(event.getQuantities()),
+                    event.getCcyPair(),
+                    event.getTenor(),
+                    event.getLocalDate(),
+                    event.getLpName()
+            ));
+        }
+
+        // Remove the last comma
+        sqlBuilder.setLength(sqlBuilder.length() - 1);
+
+        try {
+            client.query(sqlBuilder.toString()).get(3, TimeUnit.SECONDS);
+            log.info("Batch of LpPriceEvents inserted successfully");
+            eventBatch.clear();
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            log.error("Failed to insert batch of LpPriceEvents", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    private String arrayToString(double[] array) {
+        return Arrays.stream(array)
+                .mapToObj(Double::toString)
+                .collect(Collectors.joining(", "));
+    }
+
+    private void createTableIfNotExists() {
+        try {
+            // Check if the table exists
+            String checkTableSQL = "EXISTS TABLE lp_price_events";
+            QueryResponse queryResponse = client.query(checkTableSQL).get(3, TimeUnit.SECONDS);
+            long metrics = queryResponse.getMetrics().getMetric(ServerMetrics.RESULT_ROWS).getLong();
+
+            log.info("Metrics {} ", metrics);
+            boolean tableExists = metrics > 0L;
+
+            if (!tableExists) {
+                // Create the table if it does not exist
+                String createTableSQL = "CREATE TABLE lp_price_events (" +
+                        "timestamp DateTime64(3), " +
+                        "uuid String, " +
+                        "bidPrices Array(Float64), " +
+                        "askPrices Array(Float64), " +
+                        "quantities Array(Float64), " +
+                        "ccyPair String, " +
+                        "tenor String, " +
+                        "localDate Date, " +
+                        "lpName String" +
+                        ") ENGINE = MergeTree() " +
+                        "PARTITION BY toYYYYMM(localDate) " +
+                        "ORDER BY timestamp " +
+                        "TTL localDate + INTERVAL 1 YEAR";
+
+                client.query(createTableSQL).get(3, TimeUnit.SECONDS);
+                log.info("Table created successfully");
+            } else {
+                log.info("Table already exists");
+            }
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            log.error("Failed to check or create table", e);
+            throw new RuntimeException("Failed to check or create table", e);
+        } catch (Exception e) {
+            log.error("Unexpected error occurred while checking or creating table", e);
+            throw new RuntimeException("Unexpected error occurred while checking or creating table", e);
         }
     }
 }
