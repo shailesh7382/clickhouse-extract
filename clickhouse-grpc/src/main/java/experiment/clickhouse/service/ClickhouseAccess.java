@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -43,63 +44,25 @@ public class ClickhouseAccess {
             Runtime.getRuntime().exit(-503);
         }
 
-        // Read data in various formats
-        readData();
-        readDataAsText();
-
-        // Insert data using POJO
-        insertDataUsingPOJO();
-
         log.info("ClickhouseAccess run method completed");
         Runtime.getRuntime().exit(0);
     }
 
+    public String checkStatus() {
+        return isServerAlive() ? "ClickHouse server is alive" : "ClickHouse server is not alive";
+    }
+
+    public List<LpPriceEvent> getHistoricalPrices(String ccyPair, String lpName, String startDate, String endDate) {
+        return writer.getHistoricalPrices(ccyPair, lpName, startDate, endDate);
+    }
+
     private boolean isServerAlive() {
-        log.info("Checking if ClickHouse server is alive");
-        boolean isAlive = writer.isServerAlive();
-        if (isAlive) {
-            log.info("ClickHouse server is alive");
-        } else {
-            log.warning("ClickHouse server is not alive");
-        }
-        return isAlive;
+       return writer.isServerAlive();
     }
 
-    private void readData() {
-        log.info("Reading data using SimpleReader");
-        SimpleReader reader = new SimpleReader(endpoint, user, password, database);
-        reader.readDataUsingBinaryFormat();
-        reader.readDataAll();
-        reader.readData();
-    }
-
-    private void readDataAsText() {
-        log.info("Reading data in text formats using TextFormatsReader");
-        TextFormatsReader textFormatsReader = new TextFormatsReader(endpoint, user, password, database);
-        textFormatsReader.readAsJsonEachRow();
-        textFormatsReader.readAsJsonEachRowButGSon();
-        textFormatsReader.readJSONEachRowIntoArrayOfObject();
-        textFormatsReader.readJSONEachRowIntoArrayOfObjectGson();
-        textFormatsReader.readAsCSV();
-        textFormatsReader.readAsTSV();
-    }
-
-    private void insertDataUsingPOJO() {
-        log.info("Inserting data using POJO");
-        ObjectDbWriter pojoWriter = new ObjectDbWriter(endpoint, user, password, database);
-        pojoWriter.resetTable();
-        for (int i = 0; i < 10; i++) {
-            pojoWriter.submit(new ArticleViewEvent(11132929d, LocalDateTime.now(), UUID.randomUUID().toString()));
-        }
-        pojoWriter.printLastEvents();
-        log.info("Data inserted successfully using POJO");
-    }
+   
 
     public void insertLpPriceEvent(LpPriceEvent event) {
         writer.insertLpPriceEvent(event);
-    }
-
-    public String checkStatus() {
-        return isServerAlive() ? "ClickHouse server is alive" : "ClickHouse server is not alive";
     }
 }

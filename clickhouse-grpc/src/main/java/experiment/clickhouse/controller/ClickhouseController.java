@@ -2,9 +2,13 @@
 package experiment.clickhouse.controller;
 
 import experiment.clickhouse.service.ClickhouseAccess;
+import experiment.clickhouse.service.fix.LpPriceEvent;
 import experiment.clickhouse.service.fix.Pricer;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 public class ClickhouseController {
@@ -26,5 +30,10 @@ public class ClickhouseController {
     public String startPricing() {
         pricer.startPricing();
         return "Pricing started";
+    }
+
+    @GetMapping("/historical-prices")
+    public List<LpPriceEvent> getHistoricalPrices(@RequestParam String ccyPair, @RequestParam String lpName, @RequestParam String startDate, @RequestParam String endDate) {
+        return clickhouseAccess.getHistoricalPrices(ccyPair, lpName, startDate, endDate);
     }
 }

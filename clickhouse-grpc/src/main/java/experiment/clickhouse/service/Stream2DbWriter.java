@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 @Service
@@ -151,5 +154,27 @@ public class Stream2DbWriter {
             log.error("Unexpected error occurred while checking or creating table", e);
             throw new RuntimeException("Unexpected error occurred while checking or creating table", e);
         }
+    }
+
+    public List<LpPriceEvent> getHistoricalPrices(String ccyPair, String lpName, String startDate, String endDate) {
+        List<LpPriceEvent> events = new ArrayList<>();
+        String query = String.format(
+            "SELECT * FROM lp_price_event WHERE ccyPair='%s' AND lpName='%s' AND timestamp BETWEEN '%s' AND '%s' format CSV",
+            ccyPair, lpName, startDate, endDate
+        );
+
+         try (QueryResponse response = client.query(query).get(10, TimeUnit.SECONDS)) {
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info(line);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to read data", e);
+        }
+
+        return events; 
     }
 }

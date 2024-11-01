@@ -4,3 +4,4 @@
 /log/clickhouse-server.err.log
 /log/clickhouse-server.log
 /logs/
+.vscode/settings.json

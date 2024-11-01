@@ -62,13 +62,22 @@ public class Pricer implements CommandLineRunner {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime oneMonthAgo = now.minusMonths(1);
         int counter = 0;
+        String[] lpNames = {"REU", "JPM", "SCB", "UBS"};
+        double[][] quantities = {
+            {1000000, 2000000, 3000000},
+            {1500000, 2500000, 3500000},
+            {1200000, 2200000, 3200000},
+            {1300000, 2300000, 3300000}
+        };
         try {
             while (!oneMonthAgo.isAfter(now)) {
-                counter++;
                 if (isWeekday(oneMonthAgo) && !holidays.contains(oneMonthAgo.toLocalDate())) {
-                    LpPriceEvent event = generateLpPriceEvent(oneMonthAgo);
-                    clickhouseAccess.insertLpPriceEvent(event);
-                    log.info("Sending event: {} - {}", counter, event);
+                    for (int i = 0; i < lpNames.length; i++) {
+                        counter++;
+                        LpPriceEvent event = generateLpPriceEvent(oneMonthAgo, lpNames[i], quantities[i]);
+                        clickhouseAccess.insertLpPriceEvent(event);
+                        log.info("Sending event: {} - {}", counter, event);
+                    }
                 }
                 oneMonthAgo = oneMonthAgo.plusMinutes(1); // Adjust the interval as needed
             }
@@ -77,24 +86,21 @@ public class Pricer implements CommandLineRunner {
         }
     }
 
-    public LpPriceEvent generateLpPriceEvent(LocalDateTime timestamp) {
+    public LpPriceEvent generateLpPriceEvent(LocalDateTime timestamp, String lpName, double[] quantities) {
         String uuid = UUID.randomUUID().toString();
         String ccyPair = currencyPairs[random.nextInt(currencyPairs.length)];
         double midPrice = generateMidPrice(ccyPair);
-        double[] bidPrices = {
-            roundPrice(midPrice - 0.0001, ccyPair),
-            roundPrice(midPrice - 0.0002, ccyPair),
-            roundPrice(midPrice - 0.0003, ccyPair)
-        };
-        double[] askPrices = {
-            roundPrice(midPrice + 0.0001, ccyPair),
-            roundPrice(midPrice + 0.0002, ccyPair),
-            roundPrice(midPrice + 0.0003, ccyPair)
-        };
-        double[] quantities = {1000000, 2000000, 3000000};
+
+        // Generate bid and ask prices based on the length of quantities array
+        double[] bidPrices = new double[quantities.length];
+        double[] askPrices = new double[quantities.length];
+        for (int i = 0; i < quantities.length; i++) {
+            bidPrices[i] = roundPrice(midPrice - (0.0001 * (i + 1)), ccyPair);
+            askPrices[i] = roundPrice(midPrice + (0.0001 * (i + 1)), ccyPair);
+        }
+
         String tenor = "SPOT";
         LocalDate localDate = timestamp.toLocalDate();
-        String lpName = "REU";
 
         LpPriceEvent event = new LpPriceEvent(timestamp, uuid);
         event.setBidPrices(bidPrices);
