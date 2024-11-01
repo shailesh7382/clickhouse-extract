@@ -1,14 +1,15 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>2.5.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
+
     <groupId>experiment.clickhouse</groupId>
     <artifactId>clickhouse-grpc</artifactId>
     <version>1.0-SNAPSHOT</version>
@@ -20,78 +21,72 @@
     </properties>
 
     <dependencies>
-        <!-- Spring Boot Starter -->
+        <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- SLF4J API -->
+        <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.32</version>
         </dependency>
-
-        <!-- Logback Classic -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.2.6</version>
         </dependency>
 
+        <!-- JSON Parsing -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.17.2</version>
             <scope>compile</scope>
         </dependency>
-
-        <dependency>
-            <groupId>com.clickhouse</groupId>
-            <artifactId>client-v2</artifactId>
-            <version>0.7.0</version>
-        </dependency>
-
-        <!-- Recommended for JSON parsing -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
             <version>2.17.2</version>
         </dependency>
         <dependency>
-            <groupId>org.lz4</groupId>
-            <artifactId>lz4-pure-java</artifactId>
-            <version>1.8.0</version>
-        </dependency>
-        <dependency>
-    <groupId>org.apache.httpcomponents.client5</groupId>
-    <artifactId>httpclient5</artifactId>
-    <version>5.3.1</version>
-</dependency>
-
-
-        <!-- Popular Alternative to Jackson -->
-        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.11.0</version>
         </dependency>
 
-        <!-- For parsing DB text formats -->
+        <!-- ClickHouse Client -->
+        <dependency>
+            <groupId>com.clickhouse</groupId>
+            <artifactId>client-v2</artifactId>
+            <version>0.7.0</version>
+        </dependency>
+
+        <!-- HTTP Client -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>5.3.1</version>
+        </dependency>
+
+        <!-- CSV Parsing -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
             <version>1.11.0</version>
         </dependency>
 
+        <!-- Compression -->
+        <dependency>
+            <groupId>org.lz4</groupId>
+            <artifactId>lz4-pure-java</artifactId>
+            <version>1.8.0</version>
+        </dependency>
     </dependencies>
-
-
-
 </project>

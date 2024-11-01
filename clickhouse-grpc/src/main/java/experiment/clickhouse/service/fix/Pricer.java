@@ -1,6 +1,11 @@
 package experiment.clickhouse.service.fix;
 
 import experiment.clickhouse.service.ClickhouseAccess;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -10,12 +15,15 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
-public class Pricer {
-
+@Service
+public class Pricer implements CommandLineRunner {
+    private static final Logger log = LoggerFactory.getLogger(Pricer.class);
     private final Random random = new Random();
     private final String[] currencyPairs = {"EURUSD", "AUDUSD", "USDJPY", "USDSGD", "GBPUSD"};
-    private final ClickhouseAccess clickhouseAccess = new ClickhouseAccess();
     private final Set<LocalDate> holidays = new HashSet<>();
+
+    @Autowired
+    private ClickhouseAccess clickhouseAccess;
 
     public Pricer() {
         // Add holidays to the set
@@ -43,6 +51,30 @@ public class Pricer {
         holidays.add(LocalDate.of(2023, 2, 20));  // Presidents' Day
         holidays.add(LocalDate.of(2023, 5, 29));  // Memorial Day
         holidays.add(LocalDate.of(2023, 9, 4));   // Labor Day
+    }
+
+    @Override
+    public void run(String... args) {
+        startPricing();
+    }
+
+    public void startPricing() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oneMonthAgo = now.minusMonths(1);
+        int counter = 0;
+        try {
+            while (!oneMonthAgo.isAfter(now)) {
+                counter++;
+                if (isWeekday(oneMonthAgo) && !holidays.contains(oneMonthAgo.toLocalDate())) {
+                    LpPriceEvent event = generateLpPriceEvent(oneMonthAgo);
+                    clickhouseAccess.insertLpPriceEvent(event);
+                    log.info("Sending event: {} - {}", counter, event);
+                }
+                oneMonthAgo = oneMonthAgo.plusMinutes(1); // Adjust the interval as needed
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public LpPriceEvent generateLpPriceEvent(LocalDateTime timestamp) {
@@ -106,21 +138,6 @@ public class Pricer {
 
     private double roundToThreeDecimalPlaces(double value) {
         return Math.round(value * 1000.0) / 1000.0;
-    }
-
-    public static void main(String[] args) {
-        Pricer pricer = new Pricer();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime oneMonthAgo = now.minusMonths(1);
-
-        while (!oneMonthAgo.isAfter(now)) {
-            if (isWeekday(oneMonthAgo) && !pricer.holidays.contains(oneMonthAgo.toLocalDate())) {
-                LpPriceEvent event = pricer.generateLpPriceEvent(oneMonthAgo);
-                pricer.clickhouseAccess.insertLpPriceEvent(event);
-                System.out.println(event);
-            }
-            oneMonthAgo = oneMonthAgo.plusMinutes(1); // Adjust the interval as needed
-        }
     }
 
     private static boolean isWeekday(LocalDateTime dateTime) {

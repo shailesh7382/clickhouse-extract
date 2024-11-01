@@ -1,13 +1,17 @@
 package experiment.clickhouse.service;
 
 import com.clickhouse.client.api.Client;
+import com.clickhouse.client.api.data_formats.ClickHouseBinaryFormatReader;
 import com.clickhouse.client.api.metrics.ServerMetrics;
 import com.clickhouse.client.api.query.QueryResponse;
 import experiment.clickhouse.service.fix.LpPriceEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -16,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+@Service
 public class Stream2DbWriter {
 
     private static final Logger log = LoggerFactory.getLogger(Stream2DbWriter.class);
@@ -24,13 +29,21 @@ public class Stream2DbWriter {
     private final Client client;
     private final List<LpPriceEvent> eventBatch;
 
-    public Stream2DbWriter(String endpoint, String user, String password, String database) {
+    public Stream2DbWriter(@Value("${clickhouse.endpoint}") String endpoint,
+                           @Value("${clickhouse.user}") String user,
+                           @Value("${clickhouse.password}") String password,
+                           @Value("${clickhouse.database}") String database) {
         this.client = new Client.Builder()
                 .addEndpoint(endpoint)
                 .setUsername(user)
                 .setPassword(password)
                 .compressServerResponse(true)
                 .setDefaultDatabase(database)
+                .compressClientRequest(true)
+                .setMaxConnections(10)
+                .enableConnectionPool(true)
+                .useAsyncRequests(false)
+                .setConnectionRequestTimeout(30000, ChronoUnit.SECONDS)
                 .build();
         this.eventBatch = new ArrayList<>();
     }
@@ -48,7 +61,7 @@ public class Stream2DbWriter {
     }
 
     private synchronized void flush() {
-        createTableIfNotExists();
+//        createTableIfNotExists();
         if (eventBatch.isEmpty()) {
             return;
         }
@@ -73,14 +86,24 @@ public class Stream2DbWriter {
         // Remove the last comma
         sqlBuilder.setLength(sqlBuilder.length() - 1);
 
-        try {
-            client.query(sqlBuilder.toString()).get(3, TimeUnit.SECONDS);
-            log.info("Batch of LpPriceEvents inserted successfully");
-            eventBatch.clear();
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            log.error("Failed to insert batch of LpPriceEvents", e);
-            throw new RuntimeException(e);
+
+       // Default format is RowBinaryWithNamesAndTypesFormatReader so reader have all information about columns
+        try (QueryResponse response = client.query(sqlBuilder.toString()).get(3, TimeUnit.SECONDS);) {
+
+            // Create a reader to access the data in a convenient way
+            ClickHouseBinaryFormatReader reader = client.newBinaryFormatReader(response);
+
+            while (reader.hasNext()) {
+                reader.next(); // Read the next record from stream and parse it
+                // collecting data
+            }
+        } catch (Exception e) {
+            log.error("Failed to read data", e);
         }
+
+        log.info("Batch of LpPriceEvents inserted successfully {} ", sqlBuilder.toString());
+        eventBatch.clear();
+
     }
 
     private String arrayToString(double[] array) {

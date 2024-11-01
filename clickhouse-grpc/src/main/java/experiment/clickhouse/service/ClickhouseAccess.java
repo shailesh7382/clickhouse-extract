@@ -1,12 +1,13 @@
 package experiment.clickhouse.service;
 
 import experiment.clickhouse.service.fix.LpPriceEvent;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Service
@@ -19,17 +20,18 @@ public class ClickhouseAccess {
     private final String password;
     private final String database;
 
-    public ClickhouseAccess() {
-        // Initialize connection parameters from system properties
-        this.endpoint = System.getProperty("chEndpoint", "http://localhost:8123");
-        this.user = System.getProperty("chUser", "default");
-        this.password = System.getProperty("chPassword", "password123");
-        this.database = System.getProperty("chDatabase", "default");
-    }
+    @Autowired
+    private Stream2DbWriter writer;
 
-    public static void main(String[] args) {
-        ClickhouseAccess access = new ClickhouseAccess();
-        access.run();
+    @Autowired
+    public ClickhouseAccess(@Value("${clickhouse.endpoint}") String endpoint,
+                            @Value("${clickhouse.user}") String user,
+                            @Value("${clickhouse.password}") String password,
+                            @Value("${clickhouse.database}") String database) {
+        this.endpoint = endpoint;
+        this.user = user;
+        this.password = password;
+        this.database = database;
     }
 
     public void run() {
@@ -54,7 +56,6 @@ public class ClickhouseAccess {
 
     private boolean isServerAlive() {
         log.info("Checking if ClickHouse server is alive");
-        Stream2DbWriter writer = new Stream2DbWriter(endpoint, user, password, database);
         boolean isAlive = writer.isServerAlive();
         if (isAlive) {
             log.info("ClickHouse server is alive");
@@ -95,7 +96,10 @@ public class ClickhouseAccess {
     }
 
     public void insertLpPriceEvent(LpPriceEvent event) {
-        Stream2DbWriter writer = new Stream2DbWriter(endpoint, user, password, database);
         writer.insertLpPriceEvent(event);
+    }
+
+    public String checkStatus() {
+        return isServerAlive() ? "ClickHouse server is alive" : "ClickHouse server is not alive";
     }
 }

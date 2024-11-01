@@ -1,18 +1,16 @@
 <configuration>
     <!-- Scan for changes in the configuration file every 30 seconds -->
-    <configuration scan="true" scanPeriod="30 seconds">
-        <springProfile name="dev">
-            <property name="LOG_LEVEL" value="DEBUG"/>
-        </springProfile>
-        <springProfile name="prod">
-            <property name="LOG_LEVEL" value="INFO"/>
-        </springProfile>
-    </configuration>
+    <springProfile name="dev">
+        <property name="LOG_LEVEL" value="INFO"/>
+    </springProfile>
+    <springProfile name="prod">
+        <property name="LOG_LEVEL" value="INFO"/>
+    </springProfile>
 
     <!-- Console appender -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-ddTHH:mm:ss.SSSSSS} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -24,7 +22,7 @@
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSSSSS} - %msg%n</pattern>
         </encoder>
     </appender>
 
