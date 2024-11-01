@@ -10,8 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -20,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,9 +30,9 @@ public class Stream2DbWriter {
     private final List<LpPriceEvent> eventBatch;
 
     public Stream2DbWriter(@Value("${clickhouse.endpoint}") String endpoint,
-                           @Value("${clickhouse.user}") String user,
-                           @Value("${clickhouse.password}") String password,
-                           @Value("${clickhouse.database}") String database) {
+            @Value("${clickhouse.user}") String user,
+            @Value("${clickhouse.password}") String password,
+            @Value("${clickhouse.database}") String database) {
         this.client = new Client.Builder()
                 .addEndpoint(endpoint)
                 .setUsername(user)
@@ -64,12 +61,13 @@ public class Stream2DbWriter {
     }
 
     private synchronized void flush() {
-//        createTableIfNotExists();
+        // createTableIfNotExists();
         if (eventBatch.isEmpty()) {
             return;
         }
 
-        StringBuilder sqlBuilder = new StringBuilder("INSERT INTO lp_price_events (timestamp, uuid, bidPrices, askPrices, quantities, ccyPair, tenor, localDate, lpName) VALUES ");
+        StringBuilder sqlBuilder = new StringBuilder(
+                "INSERT INTO lp_price_events (timestamp, uuid, bidPrices, askPrices, quantities, ccyPair, tenor, localDate, lpName) VALUES ");
         for (LpPriceEvent event : eventBatch) {
             long epochMillis = event.getTimestamp().toInstant(ZoneOffset.UTC).toEpochMilli();
             sqlBuilder.append(String.format(
@@ -82,15 +80,14 @@ public class Stream2DbWriter {
                     event.getCcyPair(),
                     event.getTenor(),
                     event.getLocalDate(),
-                    event.getLpName()
-            ));
+                    event.getLpName()));
         }
 
         // Remove the last comma
         sqlBuilder.setLength(sqlBuilder.length() - 1);
 
-
-       // Default format is RowBinaryWithNamesAndTypesFormatReader so reader have all information about columns
+        // Default format is RowBinaryWithNamesAndTypesFormatReader so reader have all
+        // information about columns
         try (QueryResponse response = client.query(sqlBuilder.toString()).get(3, TimeUnit.SECONDS);) {
 
             // Create a reader to access the data in a convenient way
@@ -116,14 +113,17 @@ public class Stream2DbWriter {
     }
 
     private void createTableIfNotExists() {
-        try {
-            // Check if the table exists
-            String checkTableSQL = "EXISTS TABLE lp_price_events";
-            QueryResponse queryResponse = client.query(checkTableSQL).get(3, TimeUnit.SECONDS);
-            long metrics = queryResponse.getMetrics().getMetric(ServerMetrics.RESULT_ROWS).getLong();
+        // Check if the table exists
+        String checkTableSQL = "EXISTS TABLE lp_price_events";
+        try (QueryResponse queryResponse = client.query(checkTableSQL).get(3, TimeUnit.SECONDS);) {
+            // Create a reader to access the data in a convenient way
+            ClickHouseBinaryFormatReader reader = client.newBinaryFormatReader(queryResponse);
 
-            log.info("Metrics {} ", metrics);
-            boolean tableExists = metrics > 0L;
+            while (reader.hasNext()) {
+                reader.next(); // Read the next record from stream and parse it
+                // collecting data
+            }
+            boolean tableExists = (short) reader.next().get("result") > 0;
 
             if (!tableExists) {
                 // Create the table if it does not exist
@@ -142,39 +142,17 @@ public class Stream2DbWriter {
                         "ORDER BY timestamp " +
                         "TTL localDate + INTERVAL 1 YEAR";
 
-                client.query(createTableSQL).get(3, TimeUnit.SECONDS);
-                log.info("Table created successfully");
-            } else {
-                log.info("Table already exists");
-            }
-        } catch (ExecutionException | InterruptedException | TimeoutException e) {
-            log.error("Failed to check or create table", e);
-            throw new RuntimeException("Failed to check or create table", e);
-        } catch (Exception e) {
-            log.error("Unexpected error occurred while checking or creating table", e);
-            throw new RuntimeException("Unexpected error occurred while checking or creating table", e);
-        }
-    }
-
-    public List<LpPriceEvent> getHistoricalPrices(String ccyPair, String lpName, String startDate, String endDate) {
-        List<LpPriceEvent> events = new ArrayList<>();
-        String query = String.format(
-            "SELECT * FROM lp_price_event WHERE ccyPair='%s' AND lpName='%s' AND timestamp BETWEEN '%s' AND '%s' format CSV",
-            ccyPair, lpName, startDate, endDate
-        );
-
-         try (QueryResponse response = client.query(query).get(10, TimeUnit.SECONDS)) {
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    log.info(line);
+                try (QueryResponse response = client.query(createTableSQL).get(3, TimeUnit.SECONDS);) {
+                    // Create a reader to access the data in a convenient way
+                    ClickHouseBinaryFormatReader reader2 = client.newBinaryFormatReader(response);
+                    log.info("Table created successfully {} ", reader.next());
+                } catch (Exception e) {
+                    log.error("Failed to create table", e);
                 }
             }
-        } catch (Exception e) {
-            log.error("Failed to read data", e);
-        }
 
-        return events; 
+        } catch (Exception e) {
+            log.error("Failed to check table", e);
+        }
     }
 }

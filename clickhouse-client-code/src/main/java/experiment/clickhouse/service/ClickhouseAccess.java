@@ -53,7 +53,7 @@ public class ClickhouseAccess {
     }
 
     public List<LpPriceEvent> getHistoricalPrices(String ccyPair, String lpName, String startDate, String endDate) {
-        return writer.getHistoricalPrices(ccyPair, lpName, startDate, endDate);
+        return null /* writer.getHistoricalPrices(ccyPair, lpName, startDate, endDate) */;
     }
 
     private boolean isServerAlive() {
