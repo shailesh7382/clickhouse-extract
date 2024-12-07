@@ -1,8 +1,9 @@
 package com.example;
 
-import com.clickhouse.client.ClickHouseNode;
 import com.clickhouse.client.api.Client;
 import com.clickhouse.client.api.query.QueryResponse;
+import com.example.marketdata.MarketData;
+import com.example.marketdata.MarketDataListener;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueueBuilder;
@@ -53,42 +54,42 @@ public class DataIngestionPipeline {
 
             StringBuilder sqlBuilder = new StringBuilder(
                     "INSERT INTO market_data (event_time, service_id, event_id, ccy_pair, bid_prices, ask_prices, volumes, bid_points, ask_points, quote_req_id, quote_id, lp_name, status, tenor) VALUES ");
+            int counter = 0;
+            while ( tailer.methodReader((MarketDataListener) marketData -> {
+                if (marketData != null) {
+                    sqlBuilder.append(String.format(
+                            "(%d, '%s', '%s', '%s', %s, %s, %s, %s, %s, '%s', '%s', '%s', '%s', '%s'),",
+                            marketData.eventTime(),
+                            marketData.serviceId(),
+                            marketData.eventId(),
+                            marketData.getCcyPair(),
+                            marketData.getBidPrices().toString(),
+                            marketData.getAskPrices().toString(),
+                            marketData.getVolumes().toString(),
+                            marketData.getBidPoints().toString(),
+                            marketData.getAskPoints().toString(),
+                            marketData.getQuoteReqId(),
+                            marketData.getQuoteId(),
+                            marketData.getLpName(),
+                            marketData.getStatus(),
+                            marketData.getTenor()));
 
-            while ( tailer.methodReader(new MarketDataListener() {
-                    @Override
-                    public void marketData(MarketData marketData) {
-                        if (marketData != null) {
-                            sqlBuilder.append(String.format(
-                                    "(%d, '%s', '%s', '%s', %s, %s, %s, %s, %s, '%s', '%s', '%s', '%s', '%s'),",
-                                    marketData.eventTime(),
-                                    marketData.serviceId(),
-                                    marketData.eventId(),
-                                    marketData.getCcyPair(),
-                                    marketData.getBidPrices().toString(),
-                                    marketData.getAskPrices().toString(),
-                                    marketData.getVolumes().toString(),
-                                    marketData.getBidPoints().toString(),
-                                    marketData.getAskPoints().toString(),
-                                    marketData.getQuoteReqId(),
-                                    marketData.getQuoteId(),
-                                    marketData.getLpName(),
-                                    marketData.getStatus(),
-                                    marketData.getTenor()));
-
-                            if (sqlBuilder.length() >= MAX_SQL_LENGTH) {
-                                executeBatch(client, sqlBuilder);
-                                sqlBuilder.setLength(0);
-                                sqlBuilder.append("INSERT INTO market_data (event_time, service_id, event_id, ccy_pair, bid_prices, ask_prices, volumes, bid_points, ask_points, quote_req_id, quote_id, lp_name, status, tenor) VALUES ");
-                            }
-                        }
+                    if (sqlBuilder.length() >= MAX_SQL_LENGTH) {
+                        executeBatch(client, sqlBuilder);
+                        sqlBuilder.setLength(0);
+                        sqlBuilder.append("INSERT INTO market_data (event_time, service_id, event_id, ccy_pair, bid_prices, ask_prices, volumes, bid_points, ask_points, quote_req_id, quote_id, lp_name, status, tenor) VALUES ");
+                        log.info("Processed a batch of market data. Waiting for the next batch... ");
                     }
-                }).readOne()) {
+                }
+            }).readOne()) {
                 // nothing to do
+                counter++;
             }
 
                 // Execute any remaining batch
                 if (sqlBuilder.length() > 0) {
                     executeBatch(client, sqlBuilder);
+                    log.info("Finished processing all market data. TOTAL: {}", counter);
                 }
         } catch (Exception e) {
             log.error("Failed to set up Chronicle Queue", e);
@@ -125,7 +126,6 @@ public class DataIngestionPipeline {
     private static void executeBatch(Client client, StringBuilder sqlBuilder) {
         // Remove the last comma
         sqlBuilder.setLength(sqlBuilder.length() - 1);
-
         CompletableFuture.runAsync(() -> {
             try (QueryResponse response = client.query(sqlBuilder.toString()).get(3, TimeUnit.SECONDS)) {
                 log.info("Batch inserted successfully.");

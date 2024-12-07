@@ -1,11 +1,8 @@
-package com.example;
+package com.example.marketdata;
 
 import net.openhft.chronicle.wire.AbstractEventCfg;
-import net.openhft.chronicle.wire.WireIn;
-import net.openhft.chronicle.wire.WireOut;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,7 +31,8 @@ public class MarketData extends AbstractEventCfg<MarketData> {
         this.lpName = lpName;
         this.status = status;
         this.tenor = tenor;
-        this.eventTime(eventTime.toEpochSecond(ZoneOffset.UTC) * 1_000_000_000L + eventTime.getNano());
+//        this.eventTime(eventTime.toEpochSecond(ZoneOffset.UTC) * 1_000_000_000L + eventTime.getNano());
+        this.eventTimeNow();
         this.serviceId(UUID.randomUUID().toString());
         this.eventId("marketData");
     }
@@ -127,5 +125,22 @@ public class MarketData extends AbstractEventCfg<MarketData> {
 
     public void setTenor(String tenor) {
         this.tenor = tenor;
+    }
+
+    @Override
+    public String toString() {
+        return "MarketData{" +
+                "ccyPair='" + ccyPair + '\'' +
+                ", bidPrices=" + bidPrices +
+                ", askPrices=" + askPrices +
+                ", volumes=" + volumes +
+                ", bidPoints=" + bidPoints +
+                ", askPoints=" + askPoints +
+                ", quoteReqId='" + quoteReqId + '\'' +
+                ", quoteId='" + quoteId + '\'' +
+                ", lpName='" + lpName + '\'' +
+                ", status='" + status + '\'' +
+                ", tenor='" + tenor + '\'' +
+                '}';
     }
 }

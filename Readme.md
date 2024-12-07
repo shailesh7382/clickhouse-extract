@@ -59,3 +59,6 @@ lsof -i :9100
 
 Check Listening Ports: Verify that ClickHouse is listening on port 9100. You can use the following command to check:
 netstat -an | grep 9100
+
+
+create clickhouse in rootless mode 
