@@ -22,8 +22,8 @@
             [1]: https://github.com/pocoproject/poco/blob/poco-1.9.4-release/Foundation/include/Poco/Logger.h#L105-L114
         -->
         <level>trace</level>
-        <log>/Users/shailesh/IdeaProjects/clickhouse-extract/log/clickhouse-server.log</log>
-        <errorlog>/Users/shailesh/IdeaProjects/clickhouse-extract/log/clickhouse-server.err.log</errorlog>
+        <log>../log/clickhouse-server.log</log>
+        <errorlog>../log/clickhouse-server.err.log</errorlog>
         <!-- Rotation policy
              See https://github.com/pocoproject/poco/blob/poco-1.9.4-release/Foundation/include/Poco/FileChannel.h#L54-L85
           -->
@@ -454,7 +454,7 @@
     <validate_tcp_client_information>false</validate_tcp_client_information>
 
     <!-- Path to data directory, with trailing slash. -->
-    <path>/Users/shailesh/IdeaProjects/clickhouse-extract/data/</path>
+    <path>../data/</path>
 
     <!-- Multi-disk configuration example: -->
     <!--
@@ -507,7 +507,7 @@
 
 
     <!-- Path to temporary data for processing hard queries. -->
-    <tmp_path>/Users/shailesh/IdeaProjects/clickhouse-extract/data/tmp/</tmp_path>
+    <tmp_path>../data/tmp/</tmp_path>
 
     <!-- Disable AuthType plaintext_password and no_password for ACL. -->
     <allow_plaintext_password>1</allow_plaintext_password>
@@ -558,7 +558,7 @@
     <!-- <tmp_policy>tmp</tmp_policy> -->
 
     <!-- Directory with user provided files that are accessible by 'file' table function. -->
-    <user_files_path>/Users/shailesh/IdeaProjects/clickhouse-extract/data/user_files/</user_files_path>
+    <user_files_path>../data/user_files/</user_files_path>
 
     <!-- LDAP server definitions. -->
     <ldap_servers>
@@ -650,7 +650,7 @@
             </kerberos>
     -->
 
-    <users_config>/Users/shailesh/IdeaProjects/clickhouse-extract/system-config/users.xml</users_config>
+    <users_config>../system-config/users.xml</users_config>
 
     <!-- Sources to read users, roles, access rights, profiles of settings, quotas. -->
     <user_directories>
@@ -660,7 +660,7 @@
         </users_xml>
         <local_directory>
             <!-- Path to folder where users created by SQL commands are stored. -->
-            <path>/Users/shailesh/IdeaProjects/clickhouse-extract/data/access/</path>
+            <path>../data/access/</path>
         </local_directory>
 
         <!-- To add an LDAP server as a remote user directory of users that are not defined locally, define a single 'ldap' section

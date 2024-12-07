@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>ingestion</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+<dependencies>
+    <!-- Chronicle Queue -->
+    <dependency>
+        <groupId>net.openhft</groupId>
+        <artifactId>chronicle-queue</artifactId>
+        <version>5.20.121</version>
+    </dependency>
+
+    <!-- ClickHouse Client -->
+    <dependency>
+        <groupId>com.clickhouse</groupId>
+        <artifactId>client-v2</artifactId>
+        <version>0.7.0</version>
+    </dependency>
+
+    <!-- Logging -->
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>1.7.32</version>
+    </dependency>
+    <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>1.2.6</version>
+    </dependency>
+    <!-- Compression -->
+    <dependency>
+        <groupId>org.lz4</groupId>
+        <artifactId>lz4-pure-java</artifactId>
+        <version>1.8.0</version>
+    </dependency>
+</dependencies>
+
+    <build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>2.22.2</version>
+            <configuration>
+                <argLine>--add-opens java.base/java.lang.reflect=ALL-UNNAMED</argLine>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+</project>

@@ -5,3 +5,5 @@
 /log/clickhouse-server.log
 /logs/
 .vscode/settings.json
+/ingestion/target/
+/path/
