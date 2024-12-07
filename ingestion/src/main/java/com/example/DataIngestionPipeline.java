@@ -1,8 +1,8 @@
 package com.example;
 
 import com.clickhouse.client.api.Client;
+import com.clickhouse.client.api.metrics.ServerMetrics;
 import com.clickhouse.client.api.query.QueryResponse;
-import com.example.marketdata.MarketData;
 import com.example.marketdata.MarketDataListener;
 import net.openhft.chronicle.queue.ChronicleQueue;
 import net.openhft.chronicle.queue.ExcerptTailer;
@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 public class DataIngestionPipeline {
 
     private static final Logger log = LoggerFactory.getLogger(DataIngestionPipeline.class);
-    private static final int BATCH_SIZE = 100; // Define the batch size
     private static final int MAX_SQL_LENGTH = 10000; // Define the maximum SQL length
 
     public static void main(String[] args) {
@@ -52,11 +51,12 @@ public class DataIngestionPipeline {
             // Create table if it does not exist
             createTableIfNotExists(client);
 
-            StringBuilder sqlBuilder = new StringBuilder(
-                    "INSERT INTO market_data (event_time, service_id, event_id, ccy_pair, bid_prices, ask_prices, volumes, bid_points, ask_points, quote_req_id, quote_id, lp_name, status, tenor) VALUES ");
+            StringBuilder sqlBuilder = new StringBuilder();
+            sqlBuilder.append("INSERT INTO market_data (event_time, service_id, event_id, ccy_pair, bid_prices, ask_prices, volumes, bid_points, ask_points, quote_req_id, quote_id, lp_name, status, tenor) VALUES ");
             int counter = 0;
             while ( tailer.methodReader((MarketDataListener) marketData -> {
                 if (marketData != null) {
+                    log.info("md={}", marketData);
                     sqlBuilder.append(String.format(
                             "(%d, '%s', '%s', '%s', %s, %s, %s, %s, %s, '%s', '%s', '%s', '%s', '%s'),",
                             marketData.eventTime(),
@@ -73,22 +73,23 @@ public class DataIngestionPipeline {
                             marketData.getLpName(),
                             marketData.getStatus(),
                             marketData.getTenor()));
-
-                    if (sqlBuilder.length() >= MAX_SQL_LENGTH) {
-                        executeBatch(client, sqlBuilder);
-                        sqlBuilder.setLength(0);
-                        sqlBuilder.append("INSERT INTO market_data (event_time, service_id, event_id, ccy_pair, bid_prices, ask_prices, volumes, bid_points, ask_points, quote_req_id, quote_id, lp_name, status, tenor) VALUES ");
-                        log.info("Processed a batch of market data. Waiting for the next batch... ");
-                    }
                 }
             }).readOne()) {
                 // nothing to do
                 counter++;
+                if (sqlBuilder.length() >= MAX_SQL_LENGTH) {
+                    sqlBuilder.setLength(sqlBuilder.length() - 1); // Remove the last comma
+                    executeBatch(client, sqlBuilder.toString());
+                    sqlBuilder.setLength(0);
+                    sqlBuilder.append("INSERT INTO market_data (event_time, service_id, event_id, ccy_pair, bid_prices, ask_prices, volumes, bid_points, ask_points, quote_req_id, quote_id, lp_name, status, tenor) VALUES ");
+                    log.info("Processed a batch of market data. Waiting for the next batch... ");
+                }
             }
 
                 // Execute any remaining batch
                 if (sqlBuilder.length() > 0) {
-                    executeBatch(client, sqlBuilder);
+                    sqlBuilder.setLength(sqlBuilder.length() - 1); // Remove the last comma
+                    executeBatch(client, sqlBuilder.toString());
                     log.info("Finished processing all market data. TOTAL: {}", counter);
                 }
         } catch (Exception e) {
@@ -117,21 +118,22 @@ public class DataIngestionPipeline {
                 "ORDER BY event_time";
 
         try (QueryResponse response = client.query(createTableSQL).get(3, TimeUnit.SECONDS)) {
-            log.info("Table `market_data` is ready.");
+            log.info("Table `market_data` is ready. read rows = {}", response.getReadRows());
         } catch (Exception e) {
             log.error("Failed to create table `market_data`", e);
         }
     }
 
-    private static void executeBatch(Client client, StringBuilder sqlBuilder) {
-        // Remove the last comma
-        sqlBuilder.setLength(sqlBuilder.length() - 1);
+    private static void executeBatch(Client client, final String batchSql) {
         CompletableFuture.runAsync(() -> {
-            try (QueryResponse response = client.query(sqlBuilder.toString()).get(3, TimeUnit.SECONDS)) {
-                log.info("Batch inserted successfully.");
+            try (QueryResponse response = client.query(batchSql).get(10, TimeUnit.SECONDS)) {
+                log.info("Batch inserted successfully.rows = {} , BATCH = {}. , rows written = {} ",batchSql.length(), batches, response.getMetrics().getMetric(ServerMetrics.NUM_ROWS_WRITTEN).getLong());
             } catch (Exception e) {
                 log.error("Failed to execute batch", e);
             }
         });
+        batches ++;
     }
+
+    static int batches = 0;
 }
