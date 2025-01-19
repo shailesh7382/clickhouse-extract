@@ -1,5 +1,6 @@
 package com.example;
 
+import com.example.marketdata.FXOrder;
 import com.example.marketdata.MarketData;
 import com.example.marketdata.MarketDataGenerator;
 import com.example.marketdata.MarketDataUpdateListener;
@@ -16,9 +17,10 @@ public class ChronicleQueueWriter implements MarketDataUpdateListener, AutoClose
     private @NotNull ExcerptAppender appender;
 
     public static void main(String[] args) throws Exception {
-
         try (final ChronicleQueueWriter writer = ChronicleQueueWriter.createQueue()) {
             MarketDataGenerator generator = new MarketDataGenerator(writer);
+            generator.generateMarketData(1000);
+            generator.generateFXOrders(10);
             generator.generateMarketData(1000);
         }
     }
@@ -34,11 +36,16 @@ public class ChronicleQueueWriter implements MarketDataUpdateListener, AutoClose
         return writer;
     }
 
-
     @Override
     public void onMarketDataUpdate(MarketData marketData) {
             log.info("md={}",marketData);
             appender.writeDocument(w -> w.write("marketData").typedMarshallable(marketData));
+    }
+
+    @Override
+    public void onFXOrderUpdate(FXOrder fxOrder) {
+        log.info("fxOrder={}", fxOrder);
+        appender.writeDocument(w -> w.write("fxOrder").typedMarshallable(fxOrder));
     }
 
     @Override

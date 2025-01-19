@@ -449,7 +449,7 @@
     -->
 
     <!-- Cache path for custom (created from SQL) cached disks -->
-    <custom_cached_disks_base_directory>/Users/shailesh/IdeaProjects/clickhouse-extract/data/caches/</custom_cached_disks_base_directory>
+    <custom_cached_disks_base_directory>../data/caches/</custom_cached_disks_base_directory>
 
     <validate_tcp_client_information>false</validate_tcp_client_information>
 
@@ -1529,7 +1529,7 @@
     <!-- Directory in <clickhouse-path> containing schema files for various input formats.
          The directory will be created if it doesn't exist.
       -->
-    <format_schema_path>/Users/shailesh/IdeaProjects/clickhouse-extract/data/format_schemas/</format_schema_path>
+    <format_schema_path>../data/format_schemas/</format_schema_path>
 
     <!-- Directory containing the proto files for the well-known Protobuf types.
       -->

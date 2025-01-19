@@ -3,6 +3,8 @@ package com.example.marketdata;
 import net.openhft.chronicle.wire.AbstractEventCfg;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,6 +37,41 @@ public class MarketData extends AbstractEventCfg<MarketData> {
         this.eventTimeNow();
         this.serviceId(UUID.randomUUID().toString());
         this.eventId("marketData");
+    }
+
+    public MarketData(LocalDateTime eventTime, String ccyPair, double[] bidPrices, double[] askPrices, double[] volumes, double[] bidPoints, double[] askPoints, String quoteReqId, String quoteId, String lpName, String status, String tenor) {
+        List<Double> bidPricesList = new ArrayList<>();
+        for (double bidPrice : bidPrices) {
+            bidPricesList.add(bidPrice);
+        }
+        List<Double> askPricesList = new ArrayList<>();
+        for (double askPrice : askPrices) {
+            askPricesList.add(askPrice);
+        }
+        List<Double> volumesList = new ArrayList<>();
+        for (double volume : volumes) {
+            volumesList.add(volume);
+        }
+        List<Double> bidPointsList = new ArrayList<>();
+        for (double bidPoint : bidPoints) {
+            bidPointsList.add(bidPoint);
+        }
+        List<Double> askPointsList = new ArrayList<>();
+        for (double askPoint : askPoints) {
+            askPointsList.add(askPoint);
+        }
+        this.ccyPair = ccyPair;
+        this.bidPrices = bidPricesList;
+        this.askPrices = askPricesList;
+        this.volumes = volumesList;
+        this.bidPoints = bidPointsList;
+        this.askPoints = askPointsList;
+        this.quoteReqId = quoteReqId;
+        this.quoteId = quoteId;
+        this.lpName = lpName;
+        this.status = status;
+        this.tenor = tenor;
+        this.eventTime(eventTime.toEpochSecond(ZoneOffset.UTC) * 1_000_000_000L + eventTime.getNano());
     }
 
     // Getters

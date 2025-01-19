@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Default paths
-DEFAULT_CLICKHOUSE_BINARY="$HOME/bin/clickhouse"
+# DEFAULT_CLICKHOUSE_BINARY="$HOME/bin/clickhouse"
+DEFAULT_CLICKHOUSE_BINARY="clickhouse"
 DEFAULT_CONFIG_FILE="../system-config/system-config.xml"
 DEFAULT_LOG_DIR="../log"
 

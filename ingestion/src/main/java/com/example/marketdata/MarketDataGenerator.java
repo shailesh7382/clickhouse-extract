@@ -41,12 +41,28 @@ public class MarketDataGenerator {
                     askPoints,
                     "quoteReq_" + i,
                     "quote_" + i,
-                    "LP_" + i,
-                    "status_" + i,
-                    "tenor_" + i
+                    "LP1",
+                    "status_" ,
+                    "SP"
             );
 
             listener.onMarketDataUpdate(md);
+        }
+    }
+
+    public void generateFXOrders(int count) {
+        for (int i = 0; i < count; i++) {
+            String ccyPair = ccyPairs.get(random.nextInt(ccyPairs.size()));
+            LocalDateTime eventTime = startDate.plusSeconds(random.nextInt(60));
+            double orderPrice = getLatestBidPrice(ccyPair);
+            double orderAmount = 1_000_000L * (1 + random.nextInt(10));
+            String orderId = "order_" + i;
+            String orderType = random.nextBoolean() ? "BUY" : "SELL";
+            String quoteId = "quote_" + i;
+            String tenor = "SP";
+
+            FXOrder order = new FXOrder(eventTime, ccyPair, orderPrice, orderAmount, orderId, orderType, quoteId, tenor);
+            listener.onFXOrderUpdate(order);
         }
     }
 
